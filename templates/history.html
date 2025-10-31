@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="history-page">
+  <h2>📜 History</h2>
+  
+  <div class="summary">
+    <p>🪶 Bread crumbs: <strong>{{ breadcrumbs }}</strong></p>
+    <p>🧀 Cheese: <strong>{{ cheese }}</strong></p>
+    <p>😊 Happiness: <strong>{{ happiness }}</strong></p>
+  </div>
+
+  {% if runs %}
+    {% for run in runs %}
+      <div class="run">
+        <h3>Run {{ run.run_id }} — Score: {{ run.score }}</h3>
+        <ul class="run-entries">
+          {% for e in run.entries %}
+            <li class="entry">
+              <img src="{{ url_for('static', filename='images/' ~ e[2]) }}" alt="{{ e[0] }}" class="small-img">
+              <span class="word">{{ e[0] }} ({{ e[1] }})</span> — 
+              <span class="guess">You guessed: <strong>{{ e[3] }}</strong></span> — 
+              <span class="result">{{ '✅ Correct' if e[4] else '❌ Wrong' }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>No history yet. Try a quiz first!</p>
+  {% endif %}
+</div>
+
+<style>
+.history-page {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.summary {
+  background: #fff8e1;
+  border-radius: 10px;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.run {
+  background: #ffffff;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.run h3 {
+  margin-top: 0;
+  color: #333;
+}
+.run-entries {
+  list-style: none;
+  padding-left: 0;
+}
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.small-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+.result {
+  font-weight: bold;
+}
+</style>
+{% endblock %}

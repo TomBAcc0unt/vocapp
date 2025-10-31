@@ -1,0 +1,333 @@
+/* === Global Styles === */
+body {
+  font-family: 'Nunito', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #fefdfb;
+  color: #222;
+}
+
+a {
+  text-decoration: none;
+  color: #333;
+}
+
+a:hover {
+  color: #ff9800;
+}
+
+h1, h2, h3 {
+  font-family: 'Fredoka One', cursive;
+  color: #333;
+}
+
+/* === Header & Banner === */
+.top-banner {
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-links {
+  font-weight: bold;
+}
+
+.nav-links a {
+  margin: 0 6px;
+  transition: color 0.2s ease;
+}
+
+.user-stats {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* === Content Wrapper === */
+.content {
+  padding: 30px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* === Login Page === */
+.login-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+}
+
+.playful {
+  font-family: 'Fredoka One', cursive;
+  font-size: 48px;
+  color: #ff9800;
+  margin-bottom: 20px;
+}
+
+.login-form input {
+  padding: 10px 14px;
+  font-size: 18px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+}
+
+.enter-btn {
+  padding: 10px 20px;
+  margin-top: 10px;
+  border-radius: 10px;
+  background: #ffeb3b;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.enter-btn:hover {
+  background: #ffca28;
+}
+
+/* === Quiz Layout === */
+.quiz-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#container {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+#result-table {
+  width: 120px;
+}
+
+#result-table div {
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+#quiz-section img {
+  max-width: 400px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+/* === Pet Page === */
+.pet-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pet-container {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px 30px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.hamster-img {
+  width: 200px;
+  height: auto;
+  border-radius: 50%;
+  background: #fff8e1;
+  padding: 10px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+.pet-stats {
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.pet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.pet-action-btn {
+  background: #ffe082;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.pet-action-btn:hover {
+  background: #ffd54f;
+  transform: scale(1.05);
+}
+
+/* === History Page === */
+.history-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.run {
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  padding: 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.small-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+/* === Toast Notifications === */
+#toast-container {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.toast {
+  background: #333;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.error { background: #e53935; }
+.toast.info { background: #333; }
+
+/* === Stat Bars === */
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 300px;
+  margin-top: 10px;
+}
+
+.bar-block {
+  width: 100%;
+}
+
+.bar {
+  background: #eee;
+  height: 18px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.fill {
+  height: 100%;
+  width: 0%;
+  transition: width 0.4s ease;
+}
+
+.fill.happiness {
+  background: linear-gradient(90deg, #ffca28, #ff9800);
+}
+
+.fill.bread {
+  background: linear-gradient(90deg, #cddc39, #8bc34a);
+}
+
+.fill.cheese {
+  background: linear-gradient(90deg, #ffd54f, #ffb300);
+}
+/* === Hamster Animation Section === */
+.hamster-wrapper {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamster-img {
+  width: 200px;
+  height: auto;
+  border-radius: 50%;
+  transition: transform 0.4s ease;
+  animation: float 3s ease-in-out infinite;
+}
+
+.hamster-img.idle {
+  filter: brightness(1);
+}
+
+.hamster-img.blink {
+  animation: blinkAnim 0.2s steps(1) 1;
+  filter: brightness(0.8);
+}
+
+.hamster-img.happy {
+  animation: hop 0.6s ease 3;
+  transform: scale(1.05);
+}
+
+.hamster-shadow {
+  position: absolute;
+  bottom: 20px;
+  width: 80px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.2);
+  animation: shadowPulse 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes shadowPulse {
+  0%, 100% { transform: scaleX(1); opacity: 0.3; }
+  50% { transform: scaleX(1.2); opacity: 0.15; }
+}
+
+@keyframes blinkAnim {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.3); }
+}
+
+@keyframes hop {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-20px); }
+  60% { transform: translateY(0); }
+  80% { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}

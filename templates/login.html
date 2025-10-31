@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="login-wrap">
+  <h1 class="playful">Who are you?</h1>
+  <form method="post" class="login-form">
+    <input name="username" placeholder="Enter your name" required>
+    <button type="submit" class="enter-btn">Enter</button>
+  </form>
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="quiz-page">
+  <div class="crumbs">🧀 Cheese: <span id="cheese-count">{{ cheese }}</span></div>
+
+  <div id="container">
+    <div id="result-table">
+      {% for i in range(1, 11) %}
+        <div id="result-{{ i }}">{{ i }}</div>
+      {% endfor %}
+    </div>
+
+    <div id="quiz-section">
+      <span id="question"></span>
+      <input id="answer" placeholder="Enter the result (number)">
+      <button id="confirm">Confirm</button>
+      <div id="feedback"></div>
+      <div id="history-link" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let problems = {{ problems|tojson }};
+let index = 0;
+const total = problems.length;
+
+function loadQuestion(){
+  if(index >= total){
+    document.getElementById('question').style.display = 'none';
+    document.getElementById('answer').style.display = 'none';
+    document.getElementById('confirm').style.display = 'none';
+    document.getElementById('feedback').textContent = 'Run complete!';
+    document.getElementById('history-link').innerHTML =
+      '<a href="{{ url_for("history") }}">Check your history</a>';
+    return;
+  }
+
+  document.getElementById('question').textContent = problems[index];
+  document.getElementById('answer').value = '';
+  document.getElementById('feedback').textContent = '';
+}
+
+async function submitAnswer(){
+  const guess = document.getElementById('answer').value.trim();
+  if(!guess) return;
+
+  const resp = await fetch('/check_cheese', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ index: index, guess: guess })
+  });
+  const data = await resp.json();
+
+  if(data.error){
+    alert(data.error);
+    return;
+  }
+
+  const resultDiv = document.getElementById('result-' + (index+1));
+  resultDiv.textContent = (data.correct ? '✅ ' : '❌ ') + data.correct_answer;
+
+  // Update cheese & breadcrumbs live
+  const cheeseEl = document.getElementById('cheese-count');
+  if(cheeseEl) cheeseEl.textContent = data.cheese;
+  const crumbEl = document.getElementById('crumb-count');
+  if(crumbEl) crumbEl.textContent = data.breadcrumbs;
+
+  index++;
+  loadQuestion();
+}
+
+document.getElementById('confirm').addEventListener('click', submitAnswer);
+document.getElementById('answer').addEventListener('keypress', function(e){
+  if(e.key === 'Enter'){
+    submitAnswer();
+    e.preventDefault();
+  }
+});
+
+loadQuestion();
+</script>
+{% endblock %}

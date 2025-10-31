@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="pet-page">
+  <h2 class="title">🐹 Your Companion: Hamster</h2>
+
+  <div class="pet-container">
+    <div class="hamster-wrapper">
+      <img id="hamster-img" 
+           src="{{ url_for('static', filename='images/hamster.png') }}" 
+           alt="Hamster"
+           class="hamster-img idle">
+      <div class="hamster-shadow"></div>
+    </div>
+    
+    <div class="pet-stats">
+      <div>🪶 Bread crumbs: <span id="crumb-count-pet">{{ breadcrumbs }}</span></div>
+      <div>🧀 Cheese: <span id="cheese-count-pet">{{ cheese }}</span></div>
+      <div>😊 Happiness: <span id="happiness">{{ happiness }}</span></div>
+    </div>
+
+    <div class="bars">
+      <div class="bar-block">
+        <span>Happiness</span>
+        <div class="bar"><div id="bar-happiness" class="fill happiness"></div><span id="label-happiness" class="bar-label"></span></div>
+      </div>
+      <div class="bar-block">
+        <span>Breadcrumb Fullness</span>
+        <div class="bar"><div id="bar-bread" class="fill bread"></div><span id="label-bread" class="bar-label"></span></div>
+      </div>
+      <div class="bar-block">
+        <span>Cheese Fullness</span>
+        <div class="bar"><div id="bar-cheese" class="fill cheese"></div><span id="label-cheese" class="bar-label"></span></div>
+      </div>
+    </div>
+
+    <div class="pet-actions">
+      <button id="pet-btn" class="pet-action-btn">Pet 🐾</button>
+      <button id="feed-bread-btn" class="pet-action-btn">Feed Bread 🪶</button>
+      <button id="feed-cheese-btn" class="pet-action-btn">Feed Cheese 🧀</button>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+</div>
+
+<style>
+.bar { position: relative; width: 100%; height: 18px; background: #ddd; border-radius: 8px; overflow: hidden; margin-top: 4px; }
+.fill { height: 100%; width: 0; transition: width 0.6s ease; }
+.fill.happiness { background: linear-gradient(90deg, #87e894, #28a745); }
+.fill.bread { background: linear-gradient(90deg, #ffe79a, #f4b400); }
+.fill.cheese { background: linear-gradient(90deg, #ffd87a, #ffb300); }
+.bar-label { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-size: 0.8em; color: #333; line-height: 18px; font-weight: 500; }
+.toast { background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 8px; margin-top: 8px; opacity: 0; transition: opacity 0.3s ease; }
+.toast.show { opacity: 1; }
+.toast.error { background: #b72d2d; }
+</style>
+
+<script>
+// === Convert feeding timestamps to fullness (100% when fed, decays 10% per hour) ===
+function getFullness(lastFed) {
+  const now = new Date();
+  const fed = new Date(lastFed);
+  const hours = (now - fed) / (1000 * 60 * 60);
+  return Math.max(0, Math.round(100 - hours * 10));
+}
+
+// === Update Bars ===
+function updateBars(data) {
+  const happiness = Math.min(100, data.happiness);
+  const breadLevel = getFullness(data.last_breadcrumb_fed);
+  const cheeseLevel = getFullness(data.last_cheese_fed);
+
+  const bars = [
+    {id: 'bar-happiness', val: happiness, label: 'label-happiness'},
+    {id: 'bar-bread', val: breadLevel, label: 'label-bread'},
+    {id: 'bar-cheese', val: cheeseLevel, label: 'label-cheese'}
+  ];
+
+  bars.forEach(b => {
+    const bar = document.getElementById(b.id);
+    const label = document.getElementById(b.label);
+    bar.style.width = b.val + '%';
+    label.textContent = b.val >= 100 ? 'Satisfied' : b.val + '%';
+    if (b.val < 30) label.style.color = '#b72d2d';
+    else if (b.val < 70) label.style.color = '#b78d2d';
+    else label.style.color = '#2d9b40';
+  });
+}
+
+// === Toast ===
+function showToast(msg, type='info') {
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = msg;
+  document.getElementById('toast-container').appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 50);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// === Animation ===
+const hamster = document.getElementById('hamster-img');
+function playReaction() {
+  hamster.classList.remove('idle');
+  hamster.classList.add('happy');
+  setTimeout(() => {
+    hamster.classList.remove('happy');
+    hamster.classList.add('idle');
+  }, 1200);
+}
+
+// === Action ===
+async function petAction(action) {
+  const resp = await fetch('/pet_action', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ action })
+  });
+  const data = await resp.json();
+
+  if (data.error) {
+    showToast(data.error, 'error');
+    return;
+  }
+
+  document.getElementById('crumb-count-pet').textContent = data.breadcrumbs;
+  document.getElementById('cheese-count-pet').textContent = data.cheese;
+  document.getElementById('happiness').textContent = data.happiness;
+
+  const topCrumb = document.querySelector('.user-stats #crumb-count');
+  const topCheese = document.querySelector('.user-stats #cheese-count');
+  if (topCrumb) topCrumb.textContent = data.breadcrumbs;
+  if (topCheese) topCheese.textContent = data.cheese;
+
+  const meta = await fetch('/pet_meta');
+  const metaData = await meta.json();
+
+  updateBars({...data, ...metaData});
+  playReaction();
+
+  if (action === 'pet') showToast('Your hamster feels loved! 🐹💞');
+  if (action === 'feed_bread') showToast('Hamster ate breadcrumbs happily 🪶');
+  if (action === 'feed_cheese') showToast('Hamster enjoyed delicious cheese 🧀');
+}
+
+// === Initialize ===
+updateBars({
+  happiness: {{ happiness }},
+  last_breadcrumb_fed: '{{ last_breadcrumb_fed }}',
+  last_cheese_fed: '{{ last_cheese_fed }}'
+});
+
+document.getElementById('pet-btn').addEventListener('click', () => petAction('pet'));
+document.getElementById('feed-bread-btn').addEventListener('click', () => petAction('feed_bread'));
+document.getElementById('feed-cheese-btn').addEventListener('click', () => petAction('feed_cheese'));
+</script>
+{% endblock %}
