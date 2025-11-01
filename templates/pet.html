@@ -14,9 +14,9 @@
     </div>
     
     <div class="pet-stats">
-      <div>🪶 Bread crumbs: <span id="crumb-count-pet">{{ breadcrumbs }}</span></div>
-      <div>🧀 Cheese: <span id="cheese-count-pet">{{ cheese }}</span></div>
-      <div>😊 Happiness: <span id="happiness">{{ happiness }}</span></div>
+      <div>🪶 Bread crumbs: <span class="crumb-count-pet">{{ breadcrumbs }}</span></div>
+      <div>🧀 Cheese: <span class="cheese-count-pet">{{ cheese }}</span></div>
+      <div>😊 Happiness: <span class="happiness">{{ happiness }}</span></div>
     </div>
 
     <div class="bars">
@@ -125,10 +125,7 @@ async function petAction(action) {
     showToast(data.error, 'error');
     return;
   }
-
-  document.getElementById('crumb-count-pet').textContent = data.breadcrumbs;
-  document.getElementById('cheese-count-pet').textContent = data.cheese;
-  document.getElementById('happiness').textContent = data.happiness;
+  if (window.updateCounters) updateCounters(data);
 
   const topCrumb = document.querySelector('.user-stats #crumb-count');
   const topCheese = document.querySelector('.user-stats #cheese-count');

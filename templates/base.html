@@ -23,8 +23,9 @@
     <div class="user-stats">
       {% if session.get('user') %}
         <div>👤 {{ session.get('user') }}</div>
-        <div>🪶 <span id="crumb-count">{{ breadcrumbs if breadcrumbs is defined else 0 }}</span></div>
-        <div>🧀 <span id="cheese-count">{{ cheese if cheese is defined else 0 }}</span></div>
+        <div>🪶 <span class="crumb-count">{{ breadcrumbs if breadcrumbs is defined else 0 }}</span></div>
+        <div>🧀 <span class="cheese-count">{{ cheese if cheese is defined else 0 }}</span></div>
+        <div>😊 <span class="happiness-count">{{ happiness }}</span></div>
       {% endif %}
     </div>
   </header>
@@ -32,6 +33,21 @@
   <main class="content">
     {% block content %}{% endblock %}
   </main>
+  <script>
+  // --- Universal UI counter updater ---
+  window.updateCounters = function(data) {
+    if (!data) return;
 
+    if (data.breadcrumbs !== undefined) {
+      document.querySelectorAll('.crumb-count').forEach(el => el.textContent = data.breadcrumbs);
+    }
+    if (data.cheese !== undefined) {
+      document.querySelectorAll('.cheese-count').forEach(el => el.textContent = data.cheese);
+    }
+    if (data.happiness !== undefined) {
+      document.querySelectorAll('.happiness-count').forEach(el => el.textContent = data.happiness);
+    }
+  };
+  </script>
 </body>
 </html>

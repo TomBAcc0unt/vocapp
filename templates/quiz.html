@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="quiz-page">
-  <div class="crumbs">🪶 Bread crumbs: <span id="crumb-count">{{ breadcrumbs }}</span></div>
+  <div class="crumbs">🪶 Bread crumbs: <span class="crumb-count">{{ breadcrumbs if breadcrumbs is defined else 0 }}</span></div>
 
   <div id="container">
     <div id="result-table">
@@ -61,10 +61,10 @@ async function submitAnswer(){
   const resultDiv = document.getElementById('result-' + (index+1));
   resultDiv.textContent = (data.correct ? '✅ ' : '❌ ') + data.correct_answer;
 
-  // Update breadcrumbs & cheese live
-  document.getElementById('crumb-count').textContent = data.breadcrumbs;
-  const cheeseEl = document.getElementById('cheese-count');
-  if(cheeseEl) cheeseEl.textContent = data.cheese;
+  // Update cheese & breadcrumbs live
+  if (window.updateCounters) updateCounters(data);
+  //document.querySelectorAll('.crumb-count').forEach(el => el.textContent = data.breadcrumbs);
+  //document.querySelectorAll('.cheese-count').forEach(el => el.textContent = data.cheese);
 
   index++;
   loadQuestion();
