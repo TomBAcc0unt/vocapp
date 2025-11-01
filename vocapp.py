@@ -333,13 +333,17 @@ def pet_page():
             breadcrumbs_fullness = cheese_fullness = happiness = 50            
             lb_ts = lc_ts = lh_ts = datetime.utcnow().isoformat()
 
-    return render_template('pet.html',
-                           last_breadcrumb_fed=lb_ts,
-                           last_cheese_fed=lc_ts,
-                           last_happiness_fed=lh_ts)
+    return render_template(
+        'pet.html',
+        breadcrumbs_fullness=breadcrumbs_fullness,        # ✅ Pass fullness values
+        cheese_fullness=cheese_fullness,
+        happiness=happiness,
+        last_breadcrumb_fed=lb_ts,
+        last_cheese_fed=lc_ts,
+        last_happiness_fed=lh_ts
+    )
 
 
-# --- Pet actions ---
 @app.route('/pet_action', methods=['POST'])
 def pet_action():
     if 'user' not in session:
@@ -351,44 +355,59 @@ def pet_action():
 
     with get_db() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT breadcrumbs_inventory, breadcrumbs_fullness, cheese_inventory, cheese_fullness, happiness FROM users WHERE user=?", (user,))
+        cur.execute("""
+            SELECT breadcrumbs_inventory, breadcrumbs_fullness,
+                   cheese_inventory, cheese_fullness, happiness
+            FROM users WHERE user=?
+        """, (user,))
         breadcrumbs_inventory, breadcrumbs_fullness, cheese_inventory, cheese_fullness, happiness = cur.fetchone() or (0, 50, 0, 50, 50)
 
         now = datetime.utcnow().isoformat()
 
         if action == 'pet':
             happiness = min(100, (happiness or 0) + 1)
-            cur.execute("UPDATE users SET happiness=?, last_happiness_fed=? WHERE user=?", (happiness, now, user))
+            cur.execute("UPDATE users SET happiness=?, happiness_last_fed=? WHERE user=?", (happiness, now, user))
 
         elif action == 'feed_bread':
             if breadcrumbs_inventory <= 0:
                 return jsonify({'error': 'No breadcrumbs to feed'}), 400
             breadcrumbs_inventory -= 1
-            happiness = min(100, (happiness or 0) + 1)
             breadcrumbs_fullness = min(100, (breadcrumbs_fullness or 0) + 1)
             cur.execute("""
-                UPDATE users SET breadcrumbs_inventory=?, breadcrumbs_fullness=?, happiness=?, last_breadcrumb_fed=?
+                UPDATE users SET breadcrumbs_inventory=?, breadcrumbs_fullness=?, breadcrumbs_last_fed=?
                 WHERE user=?
-            """, (breadcrumbs_inventory, breadcrumbs_fullness, happiness, now, user))
+            """, (breadcrumbs_inventory, breadcrumbs_fullness, now, user))
 
         elif action == 'feed_cheese':
             if cheese_inventory <= 0:
                 return jsonify({'error': 'No cheese to feed'}), 400
-            ccheese_inventoryeese -= 1
-            happiness = min(100, (happiness or 0) + 1)
+            cheese_inventory -= 1
             cheese_fullness = min(100, (cheese_fullness or 0) + 1)
             cur.execute("""
-                UPDATE users SET cheese_inventory=?, cheese_fullness=?, happiness=?, last_cheese_fed=?
+                UPDATE users SET cheese_inventory=?, cheese_fullness=?, cheese_last_fed=?
                 WHERE user=?
-            """, (cheese_inventory, cheese_fullness, happiness, now, user))
+            """, (cheese_inventory, cheese_fullness, now, user))
         else:
             return jsonify({'error': 'Unknown action'}), 400
 
         conn.commit()
-        cur.execute("SELECT breadcrumbs_inventory, cheese_inventory, happiness FROM users WHERE user=?", (user,))
-        breadcrumbs_inventory, cheese_inventory, happiness = cur.fetchone() or (0, 0, 50)
 
-    return jsonify({'breadcrumbs': breadcrumbs_inventory, 'cheese': cheese_inventory, 'happiness': happiness})
+        # Re-fetch latest values after update
+        cur.execute("""
+            SELECT breadcrumbs_inventory, breadcrumbs_fullness,
+                   cheese_inventory, cheese_fullness, happiness
+            FROM users WHERE user=?
+        """, (user,))
+        breadcrumbs_inventory, breadcrumbs_fullness, cheese_inventory, cheese_fullness, happiness = cur.fetchone()
+
+    # Return live values for JS to update bars/counters
+    return jsonify({
+        'breadcrumbs': breadcrumbs_inventory,
+        'cheese': cheese_inventory,
+        'happiness': happiness,
+        'breadcrumbs_fullness': breadcrumbs_fullness,
+        'cheese_fullness': cheese_fullness
+    })
 
 
 # --- Start Flask server ---

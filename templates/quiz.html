@@ -2,25 +2,152 @@
 
 {% block content %}
 <div class="quiz-page">
-  <div class="crumbs">🪶 Bread crumbs: <span class="crumb-count">{{ breadcrumbs if breadcrumbs is defined else 0 }}</span></div>
+  <!-- Inventory counter -->
+  <div class="crumbs">
+    🪶 Bread crumbs: <span class="crumb-count">{{ breadcrumbs if breadcrumbs is defined else 0 }}</span>
+  </div>
 
   <div id="container">
+    <!-- Left column: results -->
     <div id="result-table">
       {% for i in range(1, 11) %}
-        <div id="result-{{ i }}">{{ i }}</div>
+        <div id="result-{{ i }}" class="result-entry">
+          {{ i }}.
+          <span class="guess-answer"></span>
+        </div>
       {% endfor %}
     </div>
 
+    <!-- Right column: quiz content -->
     <div id="quiz-section">
-      <img id="quiz-img" src="" alt="">
-      <span id="slovak-word"></span>
-      <input id="answer" placeholder="Enter the English word">
-      <button id="confirm">Confirm</button>
-      <div id="feedback"></div>
-      <div id="history-link" style="margin-top:10px;"></div>
+      <div class="quiz-img-wrapper">
+        <img id="quiz-img" src="" alt="Quiz image">
+      </div>
+
+      <div class="quiz-input-section">
+        <span id="slovak-word" class="slovak-word"></span>
+        <input id="answer" placeholder="Enter the English word" autocomplete="off">
+        <button id="confirm">Confirm</button>
+        <div id="feedback"></div>
+        <div id="history-link" style="margin-top:10px;"></div>
+      </div>
     </div>
   </div>
 </div>
+
+<style>
+.quiz-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.crumbs {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+}
+
+#container {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+/* Left results bar */
+#result-table {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 200px; /* wider bar */
+}
+
+#result-table div {
+  background: #f5f5f5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-align: left;
+  font-weight: 600;
+  min-height: 40px;
+}
+
+.result-entry span.guess-answer {
+  display: block;
+  font-weight: normal;
+  font-size: 0.9em;
+  margin-top: 4px;
+  color: #555;
+}
+
+/* Right quiz section */
+#quiz-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.quiz-img-wrapper {
+  width: 100%;
+  max-width: 400px;
+  height: 400px;        /* fixed container height */
+  display: flex;
+  justify-content: center;
+  align-items: center;  /* centers the image vertically */
+  overflow: hidden;
+}
+
+#quiz-img {
+  max-height: 100%;     /* image will fill container height without exceeding */
+  width: auto;
+  object-fit: contain;  /* preserve aspect ratio */
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.quiz-input-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  gap: 10px;
+}
+
+.slovak-word {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+#answer {
+  padding: 8px 12px;
+  font-size: 1em;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  width: 220px;
+  text-align: center;
+}
+
+#confirm {
+  padding: 8px 16px;
+  font-size: 1em;
+  border-radius: 8px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+#confirm:hover {
+  background-color: #45a049;
+}
+
+#feedback {
+  margin-top: 10px;
+  font-size: 1em;
+}
+</style>
 
 <script>
 let words = {{ words|tojson }};
@@ -28,8 +155,8 @@ let run_id = {{ run_id }};
 let index = 0;
 const total = words.length;
 
-function loadQuestion(){
-  if(index >= total){
+function loadQuestion() {
+  if (index >= total) {
     document.getElementById('quiz-img').style.display = 'none';
     document.getElementById('answer').style.display = 'none';
     document.getElementById('confirm').style.display = 'none';
@@ -47,9 +174,9 @@ function loadQuestion(){
   document.getElementById('feedback').textContent = '';
 }
 
-async function submitAnswer(){
+async function submitAnswer() {
   const guess = document.getElementById('answer').value.trim();
-  if(!guess) return;
+  if (!guess) return;
 
   const resp = await fetch('/check', {
     method: 'POST',
@@ -58,13 +185,15 @@ async function submitAnswer(){
   });
   const data = await resp.json();
 
-  const resultDiv = document.getElementById('result-' + (index+1));
-  resultDiv.textContent = (data.correct ? '✅ ' : '❌ ') + data.correct_answer;
+  const resultDiv = document.getElementById('result-' + (index + 1));
+  if (data.correct) {
+    resultDiv.innerHTML = `✅ ${data.correct_answer}`;
+  } else {
+    resultDiv.innerHTML = `❌ ${data.correct_answer} <span class="guess-answer">(Your guess: ${guess})</span>`;
+  }
 
-  // Update cheese & breadcrumbs live
+  // Update inventory counters
   if (window.updateCounters) updateCounters(data);
-  //document.querySelectorAll('.crumb-count').forEach(el => el.textContent = data.breadcrumbs);
-  //document.querySelectorAll('.cheese-count').forEach(el => el.textContent = data.cheese);
 
   index++;
   loadQuestion();

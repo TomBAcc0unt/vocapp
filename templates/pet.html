@@ -5,35 +5,50 @@
   <h2 class="title">🐹 Your Companion: Hamster</h2>
 
   <div class="pet-container">
+    <!-- Hamster image and shadow -->
     <div class="hamster-wrapper">
-      <img id="hamster-img" 
-           src="{{ url_for('static', filename='images/hamster.png') }}" 
+      <img id="hamster-img"
+           src="{{ url_for('static', filename='images/hamster.png') }}"
            alt="Hamster"
            class="hamster-img idle">
       <div class="hamster-shadow"></div>
     </div>
-    
+
+    <!-- Inventory counters -->
     <div class="pet-stats">
-      <div>🪶 Bread crumbs: <span class="crumb-count-pet">{{ breadcrumbs }}</span></div>
-      <div>🧀 Cheese: <span class="cheese-count-pet">{{ cheese }}</span></div>
-      <div>😊 Happiness: <span class="happiness">{{ happiness }}</span></div>
+      <div>🪶 Bread crumbs: <span class="crumb-count">{{ breadcrumbs if breadcrumbs is defined else 0 }}</span></div>
+      <div>🧀 Cheese: <span class="cheese-count">{{ cheese if cheese is defined else 0 }}</span></div>
+      <div>😊 Happiness: <span class="happiness-count">{{ happiness if happiness is defined else 0 }}</span></div>
     </div>
 
+    <!-- Fullness bars -->
     <div class="bars">
       <div class="bar-block">
         <span>Happiness</span>
-        <div class="bar"><div id="bar-happiness" class="fill happiness"></div><span id="label-happiness" class="bar-label"></span></div>
+        <div class="bar">
+          <div id="bar-happiness" class="fill happiness"></div>
+          <span id="label-happiness" class="bar-label"></span>
+        </div>
       </div>
+
       <div class="bar-block">
         <span>Breadcrumb Fullness</span>
-        <div class="bar"><div id="bar-bread" class="fill bread"></div><span id="label-bread" class="bar-label"></span></div>
+        <div class="bar">
+          <div id="bar-bread" class="fill bread"></div>
+          <span id="label-bread" class="bar-label"></span>
+        </div>
       </div>
+
       <div class="bar-block">
         <span>Cheese Fullness</span>
-        <div class="bar"><div id="bar-cheese" class="fill cheese"></div><span id="label-cheese" class="bar-label"></span></div>
+        <div class="bar">
+          <div id="bar-cheese" class="fill cheese"></div>
+          <span id="label-cheese" class="bar-label"></span>
+        </div>
       </div>
     </div>
 
+    <!-- Pet action buttons -->
     <div class="pet-actions">
       <button id="pet-btn" class="pet-action-btn">Pet 🐾</button>
       <button id="feed-bread-btn" class="pet-action-btn">Feed Bread 🪶</button>
@@ -44,6 +59,7 @@
   <div id="toast-container"></div>
 </div>
 
+<!-- === Styling === -->
 <style>
 .bar { position: relative; width: 100%; height: 18px; background: #ddd; border-radius: 8px; overflow: hidden; margin-top: 4px; }
 .fill { height: 100%; width: 0; transition: width 0.6s ease; }
@@ -56,30 +72,20 @@
 .toast.error { background: #b72d2d; }
 </style>
 
+<!-- === JavaScript === -->
 <script>
-// === Convert feeding timestamps to fullness (100% when fed, decays 10% per hour) ===
-function getFullness(lastFed) {
-  const now = new Date();
-  const fed = new Date(lastFed);
-  const hours = (now - fed) / (1000 * 60 * 60);
-  return Math.max(0, Math.round(100 - hours * 10));
-}
-
-// === Update Bars ===
+// === Update bars ===
 function updateBars(data) {
-  const happiness = Math.min(100, data.happiness);
-  const breadLevel = getFullness(data.last_breadcrumb_fed);
-  const cheeseLevel = getFullness(data.last_cheese_fed);
-
   const bars = [
-    {id: 'bar-happiness', val: happiness, label: 'label-happiness'},
-    {id: 'bar-bread', val: breadLevel, label: 'label-bread'},
-    {id: 'bar-cheese', val: cheeseLevel, label: 'label-cheese'}
+    {id: 'bar-happiness', val: data.happiness ?? 0, label: 'label-happiness'},
+    {id: 'bar-bread', val: data.breadcrumbs_fullness ?? 0, label: 'label-bread'},
+    {id: 'bar-cheese', val: data.cheese_fullness ?? 0, label: 'label-cheese'}
   ];
 
   bars.forEach(b => {
     const bar = document.getElementById(b.id);
     const label = document.getElementById(b.label);
+    if (!bar || !label) return;
     bar.style.width = b.val + '%';
     label.textContent = b.val >= 100 ? 'Satisfied' : b.val + '%';
     if (b.val < 30) label.style.color = '#b72d2d';
@@ -112,32 +118,28 @@ function playReaction() {
   }, 1200);
 }
 
-// === Action ===
+// === Pet Action ===
 async function petAction(action) {
   const resp = await fetch('/pet_action', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ action })
   });
-  const data = await resp.json();
 
+  const data = await resp.json();
   if (data.error) {
     showToast(data.error, 'error');
     return;
   }
+
+  // Update global counters in header
   if (window.updateCounters) updateCounters(data);
 
-  const topCrumb = document.querySelector('.user-stats #crumb-count');
-  const topCheese = document.querySelector('.user-stats #cheese-count');
-  if (topCrumb) topCrumb.textContent = data.breadcrumbs;
-  if (topCheese) topCheese.textContent = data.cheese;
-
-  const meta = await fetch('/pet_meta');
-  const metaData = await meta.json();
-
-  updateBars({...data, ...metaData});
+  // Update bars
+  updateBars(data);
   playReaction();
 
+  // Toast feedback
   if (action === 'pet') showToast('Your hamster feels loved! 🐹💞');
   if (action === 'feed_bread') showToast('Hamster ate breadcrumbs happily 🪶');
   if (action === 'feed_cheese') showToast('Hamster enjoyed delicious cheese 🧀');
@@ -146,10 +148,11 @@ async function petAction(action) {
 // === Initialize ===
 updateBars({
   happiness: {{ happiness }},
-  last_breadcrumb_fed: '{{ last_breadcrumb_fed }}',
-  last_cheese_fed: '{{ last_cheese_fed }}'
+  breadcrumbs_fullness: {{ breadcrumbs_fullness }},
+  cheese_fullness: {{ cheese_fullness }}
 });
 
+// === Button bindings ===
 document.getElementById('pet-btn').addEventListener('click', () => petAction('pet'));
 document.getElementById('feed-bread-btn').addEventListener('click', () => petAction('feed_bread'));
 document.getElementById('feed-cheese-btn').addEventListener('click', () => petAction('feed_cheese'));
