@@ -1,0 +1,17 @@
+import sqlite3
+conn = sqlite3.connect('../results.db')
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('cap','čiapka / šiltovka','cap.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('shirt','košela / tričko','shirt.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('dress','šaty','dress.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('belt','opasok','belt.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('trainers','tenisky','trainers.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('tracksuit','tepláková súprava','tracksuit.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('trousers','nohavice','trousers.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('shoes','topánky','shoes.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('gloves','rukavice','gloves.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('scarf','šatka / šál','scarf.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('coat','kabát','coat.png')")
+conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES ('tights','pančušky / elasťáky','tights.png')")
+
+conn.commit()
+conn.close()

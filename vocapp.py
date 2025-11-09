@@ -125,7 +125,7 @@ def apply_hunger_decay(username):
             ts = parse_ts(ts_str)
             if not ts:
                 return value, now.isoformat()
-            hours = int((now - ts).total_seconds() // 3600)
+            hours = int((now - ts).total_seconds() // 5400)
             if hours <= 0:
                 return value, ts_str
             new_val = max(0, (value or 0) - hours)
@@ -186,9 +186,23 @@ def quiz():
         cur.execute("SELECT id, english, slovak, image FROM vocabulary ORDER BY RANDOM() LIMIT ?", (RUN_SIZE,))
         words = cur.fetchall()
 
-    session['current_run'] = {'run_id': run_id, 'words': words}
-    return render_template('quiz.html', words=words, run_id=run_id)
+        # Determine if each word was wrong in the *last* attempt only
+        words_with_bonus = []
+        for w in words:
+            word_id = w[0]
+            cur.execute("""
+                SELECT correct
+                FROM results
+                WHERE user=? AND word_id=?
+                ORDER BY run_id DESC, id DESC
+                LIMIT 1
+            """, (user, word_id))
+            last_result = cur.fetchone()
+            was_last_wrong = (last_result is not None and last_result[0] == 0)
+            words_with_bonus.append((w[0], w[1], w[2], w[3], was_last_wrong))
 
+    session['current_run'] = {'run_id': run_id, 'words': words_with_bonus}
+    return render_template('quiz.html', words=words_with_bonus, run_id=run_id)
 
 # --- Check vocab answer ---
 @app.route('/check', methods=['POST'])
@@ -205,7 +219,7 @@ def check():
     if index < 0 or index >= len(words):
         return jsonify({'error': 'Index out of range'}), 400
 
-    word_id, english, slovak, image = words[index]
+    word_id, english, slovak, image, bonus = words[index]
     correct = 1 if english.lower() == guess else 0
 
     with get_db() as conn:
@@ -214,8 +228,10 @@ def check():
             "INSERT INTO results (user, run_id, word_id, correct, user_guess) VALUES (?, ?, ?, ?, ?)",
             (session['user'], run_id, word_id, correct, guess)
         )
+
         if correct:
-            cur.execute("UPDATE users SET breadcrumbs_inventory = breadcrumbs_inventory + 1 WHERE user=?", (session['user'],))
+            reward = 3 if bonus else 1
+            cur.execute("UPDATE users SET breadcrumbs_inventory = breadcrumbs_inventory + ? WHERE user=?", (reward, session['user']))
         conn.commit()
         cur.execute("SELECT breadcrumbs_inventory, cheese_inventory FROM users WHERE user=?", (session['user'],))
         breadcrumbs_inventory, cheese_inventory = cur.fetchone() or (0, 0)
@@ -335,7 +351,7 @@ def pet_page():
 
     return render_template(
         'pet.html',
-        breadcrumbs_fullness=breadcrumbs_fullness,        # ✅ Pass fullness values
+        breadcrumbs_fullness=breadcrumbs_fullness,        
         cheese_fullness=cheese_fullness,
         happiness=happiness,
         last_breadcrumb_fed=lb_ts,
@@ -408,6 +424,21 @@ def pet_action():
         'breadcrumbs_fullness': breadcrumbs_fullness,
         'cheese_fullness': cheese_fullness
     })
+
+@app.route('/perfect_run_reward', methods=['POST'])
+def perfect_run_reward():
+    if 'user' not in session:
+        return jsonify({'error': 'Not logged in'}), 403
+
+    user = session['user']
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET breadcrumbs_inventory = breadcrumbs_inventory + 5 WHERE user=?", (user,))
+        conn.commit()
+        cur.execute("SELECT breadcrumbs_inventory FROM users WHERE user=?", (user,))
+        breadcrumbs_inventory = cur.fetchone()[0]
+
+    return jsonify({'breadcrumbs': breadcrumbs_inventory})
 
 
 # --- Start Flask server ---

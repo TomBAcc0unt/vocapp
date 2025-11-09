@@ -154,6 +154,7 @@ let words = {{ words|tojson }};
 let run_id = {{ run_id }};
 let index = 0;
 const total = words.length;
+let allCorrect = true;
 
 function loadQuestion() {
   if (index >= total) {
@@ -161,15 +162,26 @@ function loadQuestion() {
     document.getElementById('answer').style.display = 'none';
     document.getElementById('confirm').style.display = 'none';
     document.getElementById('slovak-word').style.display = 'none';
+    
+  if (allCorrect) {
+    fetch('/perfect_run_reward', { method: 'POST' })
+      .then(resp => resp.json())
+      .then(data => {
+        document.getElementById('feedback').innerHTML = `🎯 Perfect run! +5 breadcrumbs!<br>Total: ${data.breadcrumbs}`;
+      });
+  } else {
     document.getElementById('feedback').textContent = 'Run complete!';
+  }
+
     document.getElementById('history-link').innerHTML =
       '<a href="{{ url_for("history") }}">Check your history</a>';
     return;
   }
 
-  const [id, english, slovak, image] = words[index];
+  const [id, english, slovak, image, bonus] = words[index];
   document.getElementById('quiz-img').src = '/static/images/' + image;
-  document.getElementById('slovak-word').textContent = slovak;
+  document.getElementById('slovak-word').textContent = (bonus ? '🌟 BONUS 🌟: ' : '') + slovak;
+  document.getElementById('slovak-word').style.color = bonus ? 'orange' : 'black';
   document.getElementById('answer').value = '';
   document.getElementById('feedback').textContent = '';
 }
@@ -190,6 +202,7 @@ async function submitAnswer() {
     resultDiv.innerHTML = `✅ ${data.correct_answer}`;
   } else {
     resultDiv.innerHTML = `❌ ${data.correct_answer} <span class="guess-answer">(Your guess: ${guess})</span>`;
+    allCorrect = false;
   }
 
   // Update inventory counters
