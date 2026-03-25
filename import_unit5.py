@@ -58,4 +58,5 @@ conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES (?, ?, ?)",
 conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES (?, ?, ?)", ("vanilla", "vanilka", "vanilla.png"))
 conn.execute("INSERT INTO vocabulary (english, slovak, image) VALUES (?, ?, ?)", ("What are you doing", "Čo robíš", "What_are_you_doing.png"))
 
-conn.commit()conn.close()
+conn.commit()
+conn.close()
