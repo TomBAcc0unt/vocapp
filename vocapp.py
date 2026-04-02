@@ -298,45 +298,71 @@ def competition():
     user1 = session['user']
 
     if request.method == 'POST':
-        # Get second player name from form
         user2 = request.form['player2'].strip()
+        if not user2:
+            return redirect(url_for('competition'))
         session['player2'] = user2
     else:
         user2 = session.get('player2')
 
-    # Show setup page if second player not set
-    if not user2:
-        return render_template('competition_setup.html')
-
-    # Apply hunger decay for both players
-    apply_hunger_decay(user1)
-    apply_hunger_decay(user2)
-
     with get_db() as conn:
         cur = conn.cursor()
-        # Determine new run_id based on first player
+
+        # ✅ Ensure player2 exists in DB (same as login)
+        if user2:
+            cur.execute("SELECT user FROM users WHERE user=?", (user2,))
+            if not cur.fetchone():
+                cur.execute("""
+                    INSERT INTO users (user, breadcrumbs_inventory, breadcrumbs_fullness, cheese_inventory, cheese_fullness, happiness)
+                    VALUES (?, 0, 50, 0, 50, 50)
+                """, (user2,))
+                conn.commit()
+
+        # Apply hunger decay
+        apply_hunger_decay(user1)
+        if user2:
+            apply_hunger_decay(user2)
+
+        # Get run_id
         cur.execute("SELECT MAX(run_id) FROM results WHERE user=?", (user1,))
         last_run = cur.fetchone()[0]
         run_id = 1 if last_run is None else last_run + 1
 
-        # Pick random words
-        cur.execute("SELECT id, english, slovak, image FROM vocabulary ORDER BY RANDOM() LIMIT ?", (RUN_SIZE,))
+        # Get words
+        cur.execute(
+            "SELECT id, english, slovak, image FROM vocabulary ORDER BY RANDOM() LIMIT ?",
+            (RUN_SIZE,)
+        )
         words = cur.fetchall()
 
-    # Randomize starting player per word
+    # Assign turns
     words_with_turns = []
     for w in words:
-        starting_player = random.choice([user1, user2])
-        words_with_turns.append((*w, starting_player))  # id, english, slovak, image, starter
+        starter = random.choice([user1, user2 if user2 else user1])
+        words_with_turns.append((*w, starter))
 
+    # Initialize session
     session['competition'] = {
         'run_id': run_id,
         'words': words_with_turns,
         'user1': user1,
-        'user2': user2
+        'user2': user2,
+        'breadcrumbs': {
+            user1: 0,
+            user2: 0 if user2 else 0
+        }
     }
 
-    return render_template('competition.html', words=words_with_turns, run_id=run_id, user1=user1, user2=user2)
+    return render_template(
+        'competition.html',
+        words=words_with_turns,
+        run_id=run_id,
+        user1=user1,
+        user2=user2 if user2 else "Player 2",
+        breadcrumbs=0,
+        breadcrumbs_user1=0,
+        breadcrumbs_user2=0
+    )
 
 # --- Check competition answer ---
 @app.route('/check_competition', methods=['POST'])
@@ -359,42 +385,68 @@ def check_competition():
         return jsonify({"error": "Index out of range"}), 400
 
     word_id, english, slovak, image, starter = words[index]
-    correct = 1 if english.lower() == guess else 0
+    correct = english.lower() == guess
 
-    # Update results and breadcrumbs for the current player
     with get_db() as conn:
         cur = conn.cursor()
+
+        # ✅ Ensure player exists (extra safety)
+        cur.execute("SELECT user FROM users WHERE user=?", (player,))
+        if not cur.fetchone():
+            cur.execute("""
+                INSERT INTO users (user, breadcrumbs_inventory, breadcrumbs_fullness, cheese_inventory, cheese_fullness, happiness)
+                VALUES (?, 0, 50, 0, 50, 50)
+            """, (player,))
+
+        # Save result
         cur.execute(
             "INSERT INTO results (user, run_id, word_id, correct, user_guess) VALUES (?, ?, ?, ?, ?)",
-            (player, run_id, word_id, correct, guess)
+            (player, run_id, word_id, int(correct), guess)
         )
 
+        # Update breadcrumbs ONLY for answering player
         if correct:
-            # Check if this word had bonus for the first player
-            bonus = 0
-            if starter == user1 and player == user1:
-                bonus = 1 if english.lower() != guess else 0
-            reward = 3 if bonus else 1
-            # Add breadcrumbs to the current player
             cur.execute(
-                "UPDATE users SET breadcrumbs_inventory = breadcrumbs_inventory + ? WHERE user=?",
-                (reward, player)
+                "UPDATE users SET breadcrumbs_inventory = breadcrumbs_inventory + 1 WHERE user=?",
+                (player,)
             )
+
         conn.commit()
-        # Return updated inventory for both players
-        cur.execute("SELECT breadcrumbs_inventory, cheese_inventory FROM users WHERE user=?", (user1,))
-        user1_b, user1_c = cur.fetchone() or (0, 0)
-        cur.execute("SELECT breadcrumbs_inventory, cheese_inventory FROM users WHERE user=?", (user2,))
-        user2_b, user2_c = cur.fetchone() or (0, 0)
+
+        # Fetch player1
+        cur.execute(
+            "SELECT breadcrumbs_inventory, cheese_inventory FROM users WHERE user=?",
+            (user1,)
+        )
+        row1 = cur.fetchone()
+        user1_b, user1_c = row1 if row1 else (0, 0)
+
+        # Fetch player2
+        cur.execute(
+            "SELECT breadcrumbs_inventory FROM users WHERE user=?",
+            (user2,)
+        )
+        row2 = cur.fetchone()
+        user2_b = row2[0] if row2 else 0
+
+    # Update session
+    comp['breadcrumbs'][user1] = user1_b
+    comp['breadcrumbs'][user2] = user2_b
+    session['competition'] = comp
 
     return jsonify({
-        "correct": bool(correct),
+        "correct": correct,
         "correct_answer": english,
+
+        # Player boxes
         "breadcrumbs_user1": user1_b,
-        "cheese_user1": user1_c,
         "breadcrumbs_user2": user2_b,
-        "cheese_user2": user2_c
+
+        # Header (ONLY player1)
+        "breadcrumbs": user1_b,
+        "cheese": user1_c
     })
+
 
 # --- History page ---
 @app.route('/history')
