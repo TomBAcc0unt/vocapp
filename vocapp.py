@@ -289,6 +289,112 @@ def check_cheese():
 
     return jsonify({'correct': bool(correct), 'correct_answer': correct_answer, 'breadcrumbs': breadcrumbs_inventory, 'cheese': cheese_inventory})
 
+# --- Competition Mode ---
+@app.route('/competition', methods=['GET', 'POST'])
+def competition():
+    if 'user' not in session:
+        return redirect('/')
+
+    user1 = session['user']
+
+    if request.method == 'POST':
+        # Get second player name from form
+        user2 = request.form['player2'].strip()
+        session['player2'] = user2
+    else:
+        user2 = session.get('player2')
+
+    # Show setup page if second player not set
+    if not user2:
+        return render_template('competition_setup.html')
+
+    # Apply hunger decay for both players
+    apply_hunger_decay(user1)
+    apply_hunger_decay(user2)
+
+    with get_db() as conn:
+        cur = conn.cursor()
+        # Determine new run_id based on first player
+        cur.execute("SELECT MAX(run_id) FROM results WHERE user=?", (user1,))
+        last_run = cur.fetchone()[0]
+        run_id = 1 if last_run is None else last_run + 1
+
+        # Pick random words
+        cur.execute("SELECT id, english, slovak, image FROM vocabulary ORDER BY RANDOM() LIMIT ?", (RUN_SIZE,))
+        words = cur.fetchall()
+
+    # Randomize starting player per word
+    words_with_turns = []
+    for w in words:
+        starting_player = random.choice([user1, user2])
+        words_with_turns.append((*w, starting_player))  # id, english, slovak, image, starter
+
+    session['competition'] = {
+        'run_id': run_id,
+        'words': words_with_turns,
+        'user1': user1,
+        'user2': user2
+    }
+
+    return render_template('competition.html', words=words_with_turns, run_id=run_id, user1=user1, user2=user2)
+
+# --- Check competition answer ---
+@app.route('/check_competition', methods=['POST'])
+def check_competition():
+    if 'competition' not in session:
+        return jsonify({"error": "Competition not started"}), 400
+
+    data = request.get_json()
+    run_id = int(data.get('run_id', 0))
+    index = int(data.get('index', 0))
+    guess = data.get('guess', '').strip().lower()
+    player = data.get('player')
+
+    comp = session['competition']
+    words = comp['words']
+    user1 = comp['user1']
+    user2 = comp['user2']
+
+    if index < 0 or index >= len(words):
+        return jsonify({"error": "Index out of range"}), 400
+
+    word_id, english, slovak, image, starter = words[index]
+    correct = 1 if english.lower() == guess else 0
+
+    # Update results and breadcrumbs for the current player
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO results (user, run_id, word_id, correct, user_guess) VALUES (?, ?, ?, ?, ?)",
+            (player, run_id, word_id, correct, guess)
+        )
+
+        if correct:
+            # Check if this word had bonus for the first player
+            bonus = 0
+            if starter == user1 and player == user1:
+                bonus = 1 if english.lower() != guess else 0
+            reward = 3 if bonus else 1
+            # Add breadcrumbs to the current player
+            cur.execute(
+                "UPDATE users SET breadcrumbs_inventory = breadcrumbs_inventory + ? WHERE user=?",
+                (reward, player)
+            )
+        conn.commit()
+        # Return updated inventory for both players
+        cur.execute("SELECT breadcrumbs_inventory, cheese_inventory FROM users WHERE user=?", (user1,))
+        user1_b, user1_c = cur.fetchone() or (0, 0)
+        cur.execute("SELECT breadcrumbs_inventory, cheese_inventory FROM users WHERE user=?", (user2,))
+        user2_b, user2_c = cur.fetchone() or (0, 0)
+
+    return jsonify({
+        "correct": bool(correct),
+        "correct_answer": english,
+        "breadcrumbs_user1": user1_b,
+        "cheese_user1": user1_c,
+        "breadcrumbs_user2": user2_b,
+        "cheese_user2": user2_c
+    })
 
 # --- History page ---
 @app.route('/history')

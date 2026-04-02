@@ -9,17 +9,19 @@
 </head>
 <body>
   <header class="top-banner">
-    <nav class="nav-links">
-      <a href="{{ url_for('login') }}">Login</a>
-      <span>/</span>
-      <a href="{{ url_for('quiz') }}">Breadcrumb Quiz</a>
-      <span>/</span>
-      <a href="{{ url_for('cheese_quiz') }}">Cheese Quiz</a>
-      <span>/</span>
-      <a href="{{ url_for('pet_page') }}">Pet</a>
-      <span>/</span>
-      <a href="{{ url_for('history') }}">History</a>
-    </nav>
+      <nav class="nav-links">
+          <a href="{{ url_for('login') }}">Login</a>
+          <span>/</span>
+          <a href="{{ url_for('quiz') }}">Breadcrumb Quiz</a>
+          <span>/</span>
+          <a href="{{ url_for('competition') }}">Competition</a>
+          <span>/</span>
+          <a href="{{ url_for('cheese_quiz') }}">Cheese Quiz</a>
+          <span>/</span>
+          <a href="{{ url_for('pet_page') }}">Pet</a>
+          <span>/</span>
+          <a href="{{ url_for('history') }}">History</a>
+      </nav>
     <div class="user-stats">
       {% if session.get('user') %}
         <div>👤 {{ session.get('user') }}</div>

@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Competition Mode</h2>
+
+<div class="players-container">
+    <div class="player-box" id="player1-box">
+        <div class="player-name">{{ session['user'] }}</div>
+        <div class="player-info">Player 1 (logged in)</div>
+    </div>
+
+    <div class="player-box" id="player2-box">
+        <div class="player-name">
+            {% if session.get('player2') %}
+            {{ session['player2'] }}
+            {% else %}
+            Player 2
+            {% endif %}
+        </div>
+        <div class="player-info">
+            {% if session.get('player2') %}
+            <form method="POST" action="{{ url_for('competition') }}" class="player2-form">
+                <input name="player2" placeholder="Change player 2" required>
+                <button type="submit">Update</button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('competition') }}" class="player2-form">
+                <input name="player2" placeholder="Enter second player name" required>
+                <button type="submit">Start Competition</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="quiz-page">
+    <div class="crumbs">
+        🪶 Bread crumbs: <span class="crumb-count">{{ breadcrumbs if breadcrumbs is defined else 0 }}</span>
+    </div>
+
+    <div id="container">
+        <!-- Left results -->
+        <div id="result-table">
+            {% for i in range(1, 11) %}
+            <div id="result-{{ i }}" class="result-entry">{{ i }}. <span class="guess-answer"></span></div>
+            {% endfor %}
+        </div>
+
+        <!-- Right quiz -->
+        <div id="quiz-section">
+            <div class="quiz-img-wrapper">
+                <img id="quiz-img" src="" alt="Quiz image">
+            </div>
+
+            <div class="quiz-input-section">
+                <span id="slovak-word" class="slovak-word"></span>
+                <input id="answer" placeholder="Enter the English word" autocomplete="off">
+                <button id="confirm" type="button">Confirm</button>
+                <div id="feedback"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .players-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .player-box {
+        width: 48%;
+        padding: 15px;
+        border-radius: 10px;
+        background-color: #f5f5f5;
+        text-align: center;
+        transition: background 0.3s ease;
+    }
+
+    .player-name {
+        font-size: 1.5em;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .player-info {
+        font-size: 0.95em;
+        color: #555;
+    }
+
+    .player2-form input {
+        padding: 5px 8px;
+        font-size: 0.9em;
+        margin-right: 5px;
+    }
+
+    .player2-form button {
+        padding: 5px 10px;
+        font-size: 0.9em;
+        cursor: pointer;
+    }
+
+    /* Highlight active player */
+    .active-player {
+        background-color: #d4f4d4; /* light green */
+    }
+
+    /* Highlight second chance player */
+    .second-chance {
+        background-color: #fff9d4; /* light yellow */
+    }
+
+    /* Quiz page styling remains */
+    .quiz-page {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px 0;
+    }
+</style>
+
+<script>
+{% if session.get('player2') %}
+let words = {{ words|tojson }};
+let run_id = {{ run_id }};
+let index = 0;
+let allCorrect = true;
+
+const user1 = "{{ user1 }}";
+const user2 = "{{ user2 }}";
+
+let currentPlayer = null;
+let secondChance = false;
+
+function highlightPlayers() {
+    document.getElementById('player1-box').classList.remove('active-player', 'second-chance');
+    document.getElementById('player2-box').classList.remove('active-player', 'second-chance');
+
+    if(!secondChance) {
+        if(currentPlayer === user1) document.getElementById('player1-box').classList.add('active-player');
+        else document.getElementById('player2-box').classList.add('active-player');
+    } else {
+        if(currentPlayer === user1) document.getElementById('player1-box').classList.add('second-chance');
+        else document.getElementById('player2-box').classList.add('second-chance');
+    }
+}
+
+function loadQuestion() {
+    if(index >= words.length){
+        document.getElementById('quiz-img').style.display = 'none';
+        document.getElementById('answer').style.display = 'none';
+        document.getElementById('confirm').style.display = 'none';
+        document.getElementById('slovak-word').style.display = 'none';
+        document.getElementById('feedback').textContent = allCorrect ? "🎯 Perfect run!" : "Run complete!";
+        return;
+    }
+
+    const [id, english, slovak, image, starter] = words[index];
+    currentPlayer = starter;
+    secondChance = false;
+
+    document.getElementById('quiz-img').src = '/static/images/' + image;
+    document.getElementById('slovak-word').textContent = slovak;
+    document.getElementById('answer').value = '';
+    document.getElementById('feedback').textContent = '';
+    highlightPlayers();
+}
+
+async function submitAnswer() {
+    const guess = document.getElementById('answer').value.trim();
+    if (!guess) return;
+
+    const resp = await fetch('/check_competition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            run_id: run_id,
+            index: index,
+            guess: guess,
+            player: currentPlayer
+        })
+    });
+
+    const data = await resp.json();
+    const resultDiv = document.getElementById('result-' + (index + 1));
+
+    if(data.correct){
+        resultDiv.innerHTML = `✅ ${data.correct_answer} (by ${currentPlayer})`;
+        allCorrect = allCorrect && true;
+
+        setTimeout(()=>{ index++; loadQuestion(); }, 300);
+    } else {
+        if(!secondChance){
+            secondChance = true;
+            currentPlayer = (currentPlayer === user1) ? user2 : user1;
+            highlightPlayers();
+        } else {
+            resultDiv.innerHTML = `❌ ${data.correct_answer} <span class="guess-answer">(Your guess: ${guess})</span>`;
+            allCorrect = false;
+            index++;
+            loadQuestion();
+        }
+    }
+}
+
+document.getElementById('confirm').addEventListener('click', submitAnswer);
+document.getElementById('answer').addEventListener('keypress', function(e){
+    if(e.key==='Enter'){ submitAnswer(); e.preventDefault(); }
+});
+
+loadQuestion();
+{% endif %}
+</script>
+{% endblock %}
