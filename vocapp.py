@@ -348,10 +348,12 @@ def competition():
         'user1': user1,
         'user2': user2,
         'breadcrumbs': {
-            user1: 0,
-            user2: 0 if user2 else 0
+            user1: 0
         }
     }
+    # Only add player2 if exists
+    if user2:
+        session['competition']['breadcrumbs'][user2] = 0
 
     return render_template(
         'competition.html',
@@ -431,7 +433,8 @@ def check_competition():
 
     # Update session
     comp['breadcrumbs'][user1] = user1_b
-    comp['breadcrumbs'][user2] = user2_b
+    if user2:
+        comp['breadcrumbs'][user2] = user2_b    
     session['competition'] = comp
 
     return jsonify({
